@@ -4,7 +4,7 @@ import requests
 import pandas as pd
 import numpy as np
 from json import JSONDecodeError
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 
 class Stock:
@@ -13,7 +13,7 @@ class Stock:
         self.data = data
 
     def fetch_data(self):
-        url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={self.symbol}&apikey=4J2ULQPDE9BFOJBB"
+        url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={self.symbol}&outputsize=full&apikey=4J2ULQPDE9BFOJBB"
         r = requests.get(url)
 
         if r.status_code != 200:
@@ -57,24 +57,39 @@ class Stock:
         df["8. Differences"] = df["6. MA_Short"] - df["7. MA_Long"]
         df["9. Sign Changes"] = np.sign(df["8. Differences"])
         df["10. Signals"] = df["9. Sign Changes"].diff()
-        
-        #BUY if +2, SELL if -2
-        # for row in df["10. Signals"]:
-        #     if np.isnan(row):
-        #         df["11. BUY or SELL"] = ""
-        #     elif row == -2.0:
-        #         df["11. BUY or SELL"] = "BUY"
-        #     elif row == 2.0:
-        #         df["11. BUY or SELL"] = "SELL"
         df["11. BUY or SELL"] = np.where(df["10. Signals"] == 2.0, "BUY", np.where(df["10. Signals"] == -2.0, "SELL", ""))
 
-    # def plot_data(self):
-    #     df = self.df
-    #     plt.plot(np.array(df["4. Close"]), line_style= 'dotted')
-    #     plt.show()
+    def plot_data(self):
+        df = self.df
+        df.dropna(subset=["6. MA_Short", "7. MA_Long"], inplace=True)
+        xpoints = df.index
+        ypoints_close = np.array(df["4. close"])
+        ypoints_short = np.array(df["6. MA_Short"])
+        ypoints_long = np.array(df["7. MA_Long"])
+        
+        plt.plot(xpoints, ypoints_close, linestyle= 'solid', label="Close Price")
+        plt.plot(xpoints, ypoints_short, linestyle='dashed', label="Short Term Moving Average (10 Days)")
+        plt.plot(xpoints, ypoints_long, linestyle='dashdot', label="Long Term Moving Average (50 Days)")
 
+        buy_signals_x = df.index[df["11. BUY or SELL"] == "BUY"]
+        buy_signals_y = df["4. close"][df["11. BUY or SELL"] == "BUY"]
 
-            
+        sell_signals_x = df.index[df["11. BUY or SELL"] == "SELL"]
+        sell_signals_y = df["4. close"][df["11. BUY or SELL"] == "SELL"]
+
+        buy_signals_x_points = np.array(buy_signals_x)
+        buy_signals_y_points = np.array(buy_signals_y)
+        sell_signals_x_points = np.array(sell_signals_x)
+        sell_signals_y_points = np.array(sell_signals_y)
+
+        plt.scatter(buy_signals_x_points, buy_signals_y_points,color="green", marker="^", label="Buy Signal")
+        plt.scatter(sell_signals_x_points, sell_signals_y_points, color ="red", marker="v", label="Sell Signal")
+        plt.legend()
+        plt.title("Stock Prices Over the Last 20 Years with Moving Averages and Trading Signals")
+        plt.xlabel("Date")
+        plt.ylabel("Stock Price (USD)")
+        plt.show()
+        
 
 if __name__ == "__main__":
     apple_stock = Stock("AAPL", None)
@@ -82,4 +97,5 @@ if __name__ == "__main__":
     apple_stock.prepare_data()
     apple_stock.calculating_moving_averages()
     apple_stock.generate_signals()
-    print(apple_stock.df.to_string())
+    apple_stock.plot_data()
+    print(apple_stock.df.tail().to_string())
