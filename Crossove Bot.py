@@ -89,6 +89,52 @@ class Stock:
         plt.xlabel("Date")
         plt.ylabel("Stock Price (USD)")
         plt.show()
+
+    def total_profit(self):
+        df = self.df
+        total_profit = 0
+        last_buy_price = None
+
+        for index, row in df.iterrows():
+            signal = row["11. BUY or SELL"]
+
+            if signal == "BUY" and last_buy_price is None:
+                last_buy_price = row["4. close"]
+
+            elif signal == "SELL" and last_buy_price is not None:
+                sell_price = row["4. close"]
+                profit = sell_price - last_buy_price
+                total_profit += profit
+                last_buy_price = None
+
+        return total_profit
+
+    def trading_volume(self):
+        df = self.df
+        total_trading_volume = 0
+
+        for index, row in df.iterrows():
+            if row["11. BUY or SELL"] in ["BUY", "SELL"]:
+                total_trading_volume += row["5. volume"]
+
+        return total_trading_volume
+
+    def average_return_per_trade(self):
+        profit = Stock.total_profit(self)
+        trading_volume = Stock.trading_volume(self)
+
+        average_return_per_trade = profit/trading_volume
+        
+        return average_return_per_trade
+
+    def evaluate_performance(self):
+        profit = Stock.total_profit(self)
+        trades = Stock.trading_volume(self)
+        avg = Stock.average_return_per_trade(self)
+        print(f"Total Profit:{profit}")
+        print(f"Trading Volume: {trades}")
+        print(f"Average Return Per Trade: {avg}")
+        return profit, trades, avg
         
 
 if __name__ == "__main__":
@@ -98,4 +144,5 @@ if __name__ == "__main__":
     apple_stock.calculating_moving_averages()
     apple_stock.generate_signals()
     apple_stock.plot_data()
+    apple_stock.evaluate_performance()
     print(apple_stock.df.tail().to_string())
